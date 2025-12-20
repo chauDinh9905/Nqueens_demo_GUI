@@ -5,10 +5,13 @@ class NQueensSolver:
         self.n = n
         self.steps = []
         self.solutions = []
-        
+        self.first_sol_time = 0 
+        self.start_time = 0
+
     def solve_with_steps(self, algo_type="Đệ quy"):
         """Giải bài toán và đo thời gian thực hiện"""
-        start_time = time.perf_counter()
+        self.start_time = time.perf_counter()
+        self.first_sol_time = 0
         self.steps = []
         self.solutions = []
         
@@ -21,18 +24,23 @@ class NQueensSolver:
         else:
             self._solve_advanced(0, visited_col, visited_dig_pri, visited_dig_sec, [], algo_type)
             
-        end_time = time.perf_counter()
-        execution_time = (end_time - start_time) * 1000 # Chuyển sang ms
+        execution_time = (time.perf_counter() - self.start_time) * 1000 
+        return self.steps, self.solutions, execution_time, self.first_sol_time
+
+    def _record_solution(self, pos):
+        """Ghi lại nghiệm và thời điểm tìm thấy nghiệm đầu tiên"""
+        self.solutions.append(pos.copy())
+        if len(self.solutions) == 1:
+            self.first_sol_time = (time.perf_counter() - self.start_time) * 1000
         
-        return self.steps, self.solutions, execution_time
+        self.steps.append({
+            'type': 'solution', 'board': pos.copy(), 'row': self.n, 'col': -1,
+            'message': f'🎉 Tìm thấy nghiệm {len(self.solutions)}: { [p+1 for p in pos] }'
+        })
 
     def _backtrack(self, cur_row, visited_col, visited_dig_pri, visited_dig_sec, pos):
         if cur_row == self.n:
-            self.solutions.append(pos.copy())
-            self.steps.append({
-                'type': 'solution', 'board': pos.copy(), 'row': cur_row, 'col': -1,
-                'message': f'🎉 Tìm thấy nghiệm {len(self.solutions)}'
-            })
+            self._record_solution(pos)
             return
 
         for col_id in range(self.n):
@@ -68,25 +76,21 @@ class NQueensSolver:
 
     def _solve_advanced(self, cur_row, v_col, v_pri, v_sec, pos, algo_type):
         if cur_row == self.n:
-            self.solutions.append(pos.copy())
-            self.steps.append({'type': 'solution', 'board': pos.copy(), 'row': cur_row, 'col': -1, 'message': '🎉 Tìm thấy nghiệm!'})
+            self._record_solution(pos)
             return
 
-        # Lấy danh sách các cột khả thi (Domain)
         candidates = []
         for col_id in range(self.n):
             p_id, s_id = cur_row - col_id + self.n - 1, cur_row + col_id
             if not v_col[col_id] and not v_pri[p_id] and not v_sec[s_id]:
                 candidates.append(col_id)
 
-        # LCV (Least Constraining Value)
         if "LCV" in algo_type:
             candidates.sort(key=lambda c: self._count_conflicts(cur_row, c, v_col, v_pri, v_sec))
 
         for col_id in candidates:
             p_id, s_id = cur_row - col_id + self.n - 1, cur_row + col_id
             
-            # Forward Checking
             if "Forward Checking" in algo_type:
                 if self._has_empty_domain(cur_row + 1, col_id, v_col, v_pri, v_sec):
                     self.steps.append({
@@ -98,9 +102,7 @@ class NQueensSolver:
             v_col[col_id] = v_pri[p_id] = v_sec[s_id] = True
             pos.append(col_id)
             self.steps.append({'type': 'place', 'board': pos.copy(), 'row': cur_row, 'col': col_id, 'message': f'✓ Đặt hậu ({cur_row+1}, {col_id+1})'})
-            
             self._solve_advanced(cur_row + 1, v_col, v_pri, v_sec, pos, algo_type)
-            
             pos.pop()
             v_col[col_id] = v_pri[p_id] = v_sec[s_id] = False
             self.steps.append({'type': 'backtrack', 'board': pos.copy(), 'row': cur_row, 'col': col_id, 'message': f'← Quay lui'})
