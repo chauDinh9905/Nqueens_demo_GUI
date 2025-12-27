@@ -37,12 +37,16 @@ class NQueensApp:
         algo = self.control_panel.get_option()
         
         solver = NQueensSolver(self.n)
-        # Nhận 4 giá trị từ solver
-        self.steps, solutions, exec_time, first_time = solver.solve_with_steps(algo)
+        # Nhận thêm biến is_timeout từ solver
+        self.steps, solutions, exec_time, first_time, is_timeout = solver.solve_with_steps(algo)
         
         self.current_step = 0
         self.info_panel.update_solutions_list(solutions)
         self.info_panel.update_times(exec_time, first_time)
+        
+        if is_timeout:
+            self.info_panel.set_message("⚠️ Tốn quá nhiều thời gian! Đã dừng tìm kiếm.")
+        
         self._update_display()
         self._set_btn_state('normal')
 
