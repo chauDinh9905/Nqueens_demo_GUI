@@ -7,28 +7,48 @@ class NQueensSolver:
         self.solutions = []
         self.first_sol_time = 0 
         self.start_time = 0
+        self.timeout_limit = 10.0  # Giới hạn 10 giây
+        self.is_timeout = False
 
     def solve_with_steps(self, algo_type="Đệ quy"):
-        """Giải bài toán và đo thời gian thực hiện"""
         self.start_time = time.perf_counter()
         self.first_sol_time = 0
         self.steps = []
         self.solutions = []
+        self.is_timeout = False
         
         visited_col = [False] * self.n
         visited_dig_pri = [False] * (2 * self.n - 1)
         visited_dig_sec = [False] * (2 * self.n - 1)
         
-        if algo_type == "Đệ quy":
-            self._backtrack(0, visited_col, visited_dig_pri, visited_dig_sec, [])
-        else:
-            self._solve_advanced(0, visited_col, visited_dig_pri, visited_dig_sec, [], algo_type)
+        try:
+            if algo_type == "Đệ quy":
+                self._backtrack(0, visited_col, visited_dig_pri, visited_dig_sec, [])
+            else:
+                self._solve_advanced(0, visited_col, visited_dig_pri, visited_dig_sec, [], algo_type)
+        except StopIteration:
+            # Dùng StopIteration để thoát khỏi đệ quy nhanh chóng
+            pass
             
         execution_time = (time.perf_counter() - self.start_time) * 1000 
-        return self.steps, self.solutions, execution_time, self.first_sol_time
+        return self.steps, self.solutions, execution_time, self.first_sol_time, self.is_timeout
+
+    def _check_constraints(self):
+        """Kiểm tra thời gian và giới hạn N"""
+        # 1. Kiểm tra timeout
+        if (time.perf_counter() - self.start_time) > self.timeout_limit:
+            self.is_timeout = True
+            self.steps.append({
+                'type': 'invalid', 'board': [], 'row': -1, 'col': -1,
+                'message': '❌ Tốn quá nhiều thời gian!'
+            })
+            raise StopIteration
+        
+        # 2. Kiểm tra N > 13 và đã có 1 lời giải
+        if self.n > 13 and len(self.solutions) >= 1:
+            raise StopIteration
 
     def _record_solution(self, pos):
-        """Ghi lại nghiệm và thời điểm tìm thấy nghiệm đầu tiên"""
         self.solutions.append(pos.copy())
         if len(self.solutions) == 1:
             self.first_sol_time = (time.perf_counter() - self.start_time) * 1000
@@ -39,17 +59,22 @@ class NQueensSolver:
         })
 
     def _backtrack(self, cur_row, visited_col, visited_dig_pri, visited_dig_sec, pos):
+        self._check_constraints() # Kiểm tra mỗi khi vào một tầng đệ quy mới
+
         if cur_row == self.n:
             self._record_solution(pos)
             return
 
         for col_id in range(self.n):
+            # Kiểm tra thời gian cả trong vòng lặp để thoát nhanh hơn
+            if (time.perf_counter() - self.start_time) > self.timeout_limit: self._check_constraints()
+
             dig_pri_id = cur_row - col_id + self.n - 1
             dig_sec_id = cur_row + col_id
             
             self.steps.append({
                 'type': 'try', 'board': pos.copy(), 'row': cur_row, 'col': col_id,
-                'message': f'🔍 Thử đặt hậu tại ({cur_row+1}, {col_id+1})'
+                'message': f'🔍 Thử đặt tại ({cur_row+1}, {col_id+1})'
             })
             
             if not visited_col[col_id] and not visited_dig_pri[dig_pri_id] and not visited_dig_sec[dig_sec_id]:
@@ -75,6 +100,8 @@ class NQueensSolver:
                 })
 
     def _solve_advanced(self, cur_row, v_col, v_pri, v_sec, pos, algo_type):
+        self._check_constraints()
+
         if cur_row == self.n:
             self._record_solution(pos)
             return
@@ -93,10 +120,6 @@ class NQueensSolver:
             
             if "Forward Checking" in algo_type:
                 if self._has_empty_domain(cur_row + 1, col_id, v_col, v_pri, v_sec):
-                    self.steps.append({
-                        'type': 'invalid', 'board': pos.copy(), 'row': cur_row, 'col': col_id,
-                        'message': f'⚠️ FC: Đặt ({cur_row+1}, {col_id+1}) khiến hàng sau vô nghiệm'
-                    })
                     continue
 
             v_col[col_id] = v_pri[p_id] = v_sec[s_id] = True
@@ -106,6 +129,7 @@ class NQueensSolver:
             pos.pop()
             v_col[col_id] = v_pri[p_id] = v_sec[s_id] = False
             self.steps.append({'type': 'backtrack', 'board': pos.copy(), 'row': cur_row, 'col': col_id, 'message': f'← Quay lui'})
+
 
     def _count_conflicts(self, row, col, v_col, v_pri, v_sec):
         count = 0
