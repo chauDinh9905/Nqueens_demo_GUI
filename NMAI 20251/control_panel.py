@@ -10,7 +10,7 @@ class ControlPanel:
     def _create_widgets(self):
         tk.Label(self.frame, text="N:", bg='#f0f0f0', font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=5)
         self.n_var = tk.StringVar(value="4")
-        tk.Spinbox(self.frame, from_=4, to=12, textvariable=self.n_var, width=3).pack(side=tk.LEFT, padx=5)
+        tk.Spinbox(self.frame, from_=4, to=38, textvariable=self.n_var, width=3).pack(side=tk.LEFT, padx=5)
         
         self.option_var = tk.StringVar(value="Đệ quy")
         tk.OptionMenu(self.frame, self.option_var, "Đệ quy", "Forward Checking", "Forward Checking + LCV").pack(side=tk.LEFT, padx=5)
